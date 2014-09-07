@@ -46,9 +46,11 @@ public class SAXPageCallbackHandler extends DefaultHandler {
         if (qName.equals("page")) {
             currentPage = new WikiPage();
             currentWikitext = "";
-            currentTitle = "";
-            currentID = "";
+            currentTitle = attr.getValue("title");
+            currentID = attr.getValue("pageid");
         }
+        if (currentTitle == null) currentTitle = "";
+        if (currentID == null) currentID = "";
     }
 
     public void endElement(String uri, String name, String qName) {
@@ -73,6 +75,8 @@ public class SAXPageCallbackHandler extends DefaultHandler {
         else if ((currentTag.equals("id")) && (currentID.length() == 0)) {
             currentID = new String(ch, start, length);
         } else if (currentTag.equals("text")) {
+            currentWikitext = currentWikitext.concat(new String(ch, start, length));
+        } else if (currentTag.equals("rev")) {
             currentWikitext = currentWikitext.concat(new String(ch, start, length));
         }
     }

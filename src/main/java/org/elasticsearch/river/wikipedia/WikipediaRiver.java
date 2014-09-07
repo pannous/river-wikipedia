@@ -24,52 +24,49 @@ import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.block.ClusterBlockException;
 import org.elasticsearch.common.inject.Inject;
+import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.util.concurrent.EsExecutors;
-import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.common.xcontent.support.XContentMapValues;
 import org.elasticsearch.indices.IndexAlreadyExistsException;
 import org.elasticsearch.river.AbstractRiverComponent;
 import org.elasticsearch.river.River;
 import org.elasticsearch.river.RiverName;
 import org.elasticsearch.river.RiverSettings;
-import org.elasticsearch.river.wikipedia.support.PageCallbackHandler;
-import org.elasticsearch.river.wikipedia.support.WikiPage;
 import org.elasticsearch.river.wikipedia.support.WikiXMLParser;
 import org.elasticsearch.river.wikipedia.support.WikiXMLParserFactory;
 
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  *
  */
 public class WikipediaRiver extends AbstractRiverComponent implements River {
-
+    protected final org.elasticsearch.common.logging.ESLogger logger = ESLoggerFactory.getLogger("WikipediaRiver");  //Logger.getLogger("WikipediaRiver");
     private StringBuilder sb = new StringBuilder();
 
     private final Client client;
 
     private final URL url;
 
-    private final String indexName;
+    final String indexName;
 
-    private final String typeName;
+    final String typeName;
 
     private final int bulkSize;
 
     private volatile Thread thread;
 
-    private volatile boolean closed = false;
+    volatile boolean closed = false;
 
     private final TimeValue bulkFlushInterval;
-    private volatile BulkProcessor bulkProcessor;
+    volatile BulkProcessor bulkProcessor;
     private final int maxConcurrentBulk;
 
 
@@ -78,8 +75,9 @@ public class WikipediaRiver extends AbstractRiverComponent implements River {
     public WikipediaRiver(RiverName riverName, RiverSettings settings, Client client) throws MalformedURLException {
         super(riverName, settings);
         this.client = client;
-
         String url = "http://download.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.xml.bz2";
+//        String url = "http://download.wikimedia.org/dewiki/latest/dewiki-latest-pages-articles.xml.bz2";
+//        String url = "file:///Users/me/dev/ai/nlp/qa/elasticsearch-river-wikiphrases/enwiki-latest-pages-articles.xml.bz2";
         if (settings.settings().containsKey("wikipedia")) {
             Map<String, Object> wikipediaSettings = (Map<String, Object>) settings.settings().get("wikipedia");
             url = XContentMapValues.nodeStringValue(wikipediaSettings.get("url"), url);
@@ -123,7 +121,7 @@ public class WikipediaRiver extends AbstractRiverComponent implements River {
         }
         WikiXMLParser parser = WikiXMLParserFactory.getSAXParser(url);
         try {
-            parser.setPageCallback(new PageCallback());
+            parser.setPageCallback(new PageCallback(this));
         } catch (Exception e) {
             logger.error("failed to create parser", e);
             return;
@@ -199,56 +197,8 @@ public class WikipediaRiver extends AbstractRiverComponent implements River {
         }
     }
 
-    private class PageCallback implements PageCallbackHandler {
 
-        @Override
-        public void process(WikiPage page) {
-            if (closed) {
-                return;
-            }
-            String title = stripTitle(page.getTitle());
-            if (logger.isTraceEnabled()) {
-                logger.trace("page {} : {}", page.getID(), page.getTitle());
-            }
-            try {
-                XContentBuilder builder = XContentFactory.jsonBuilder().startObject();
-                builder.field("title", title);
-                builder.field("text", page.getText());
-                builder.field("redirect", page.isRedirect());
-                builder.field("redirect_page", page.getRedirectPage());
-                builder.field("special", page.isSpecialPage());
-                builder.field("stub", page.isStub());
-                builder.field("disambiguation", page.isDisambiguationPage());
-
-                builder.startArray("category");
-                for (String s : page.getCategories()) {
-                    builder.value(s);
-                }
-                builder.endArray();
-
-                builder.startArray("link");
-                for (String s : page.getLinks()) {
-                    builder.value(s);
-                }
-                builder.endArray();
-
-                builder.endObject();
-
-                if (closed) {
-                    logger.warn("river was closing while processing wikipedia page [{}]/[{}]. Operation skipped.",
-                            page.getID(), page.getTitle());
-                    return;
-                }
-
-                bulkProcessor.add(new IndexRequest(indexName, typeName, page.getID()).source(builder));
-            } catch (Exception e) {
-                logger.warn("failed to construct index request", e);
-            }
-        }
-    }
-
-
-    private String stripTitle(String title) {
+    String stripTitle(String title) {
         sb.setLength(0);
         sb.append(title);
         while (sb.length() > 0 && (sb.charAt(sb.length() - 1) == '\n' || (sb.charAt(sb.length() - 1) == ' '))) {

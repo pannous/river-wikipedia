@@ -3,7 +3,7 @@ Wikipedia River Plugin for Elasticsearch
 
 The Wikipedia River plugin allows index wikipedia.
 
-In order to install the plugin, run: 
+In order to install the plugin, run:
 
 ```sh
 bin/plugin -install elasticsearch/elasticsearch-river-wikipedia/2.3.0
@@ -24,8 +24,8 @@ To build a `SNAPSHOT` version, you need to build it with Maven:
 
 ```bash
 mvn clean install
-plugin --install river-wikipedia \ 
-       --url file:target/releases/elasticsearch-river-wikipedia-X.X.X-SNAPSHOT.zip
+~/elasticsearch/bin/plugin --remove river-wikipedia
+~/elasticsearch/bin/plugin --install river-wikipedia --url file:target/releases/elasticsearch-river-wikipedia-3.0.1-SNAPSHOT.zip
 ```
 
 Create river
@@ -34,9 +34,11 @@ Create river
 A simple river to index [Wikipedia](http://en.wikipedia.org) (English pages). Create it using:
 
 ```sh
-curl -XPUT localhost:9200/_river/my_river/_meta -d '
-{
-    "type" : "wikipedia"
+curl -XPUT localhost:9200/_river/wiki/_meta -d '{    "type" : "wikipedia" }'
+    "type" : "wikipedia",
+    "wikipedia" : {
+        "url" : "file:///Users/me/dev/ai/nlp/qa/elasticsearch-river-wikiphrases/enwiki-latest-pages-articles.xml.bz2"
+    }
 }
 '
 ```

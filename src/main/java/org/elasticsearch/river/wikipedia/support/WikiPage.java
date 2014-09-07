@@ -61,7 +61,7 @@ public class WikiPage {
     /**
      * @param languageCode
      * @return a string containing the title translated
-     *         in the given languageCode.
+     * in the given languageCode.
      */
     public String getTranslatedTitle(String languageCode) {
         return wikiTextParser.getTranslatedTitle(languageCode);
@@ -71,7 +71,7 @@ public class WikiPage {
      * @return true if this a disambiguation page.
      */
     public boolean isDisambiguationPage() {
-        if (title.contains("(disambiguation)") ||
+        if (title.contains("(disambiguation)") || title.contains("(Begriffsklärung)") ||
                 wikiTextParser.isDisambiguationPage())
             return true;
         else return false;
@@ -146,5 +146,17 @@ public class WikiPage {
 
     public String getID() {
         return id;
+    }
+
+    public boolean isArticle() {
+        return !isSpecialPage() && !isRedirect() && !isDisambiguationPage();
+    }
+
+    public String getImage() {
+        return wikiTextParser.getImage();
+    }
+
+    public List<String> getImages() {
+        return wikiTextParser.getImages();
     }
 }
