@@ -1246,7 +1246,7 @@ public class WikiTextParser {
         try {
             String substring = text.substring(endPos + 1);
             String text0 = text.substring(0, startPos - 1) + substring;
-            if (text0.length() < length && depth < 1000)
+            if (text0.length() < length && depth < 100)
                 return stripCite(text0, depth + 1);
         } catch (Exception e) {
         }
