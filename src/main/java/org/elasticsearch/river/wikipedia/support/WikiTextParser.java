@@ -37,6 +37,8 @@
 package org.elasticsearch.river.wikipedia.support;
 
 
+import sun.rmi.runtime.Log;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -50,9 +52,9 @@ import java.util.regex.Pattern;
  */
 public class WikiTextParser {
 
-    private String wikiText = null;
-    private ArrayList<String> pageCats = null;
-    private ArrayList<String> pageLinks = null;
+    String wikiText = null;
+    ArrayList<String> pageCats = null;
+    ArrayList<String> pageLinks = null;
     private boolean redirect = false;
     private String redirectString = null;
     private static Pattern redirectPattern =
@@ -85,6 +87,9 @@ public class WikiTextParser {
         disambiguation = matcher.find();
         matcher = disambCatPattern2.matcher(wikiText);
         disambiguation = disambiguation || matcher.find();
+    }
+
+    WikiTextParser() {
     }
 
     private void checkRedirect() {
@@ -143,7 +148,7 @@ public class WikiTextParser {
         }
     }
 
-    private void parseLinks() {
+    void parseLinks() {
         pageLinks = new ArrayList<String>();
         Pattern catPattern = Pattern.compile("\\[\\[(.*?)\\]\\]", Pattern.MULTILINE);
         Matcher matcher = catPattern.matcher(wikiText);
@@ -174,7 +179,8 @@ public class WikiTextParser {
         text = text.replaceAll("(?s)==\\s*See also.*", "");
         text = text.replaceAll("(?s)==\\s*External links.*", "");
         text = text.replaceAll("(?s)==\\s*References.*", "");
-        text = text.replace("&amp;", "&");
+        text = text.replaceAll("(?<=[a-z])\\.\\s+", "\n");
+                text = text.replace("&amp;", "&");
         text = text.replace("&gt;", ">");
         text = text.replace("&lt;", "<");
         text = text.replace("&ndash;", "-");
@@ -194,7 +200,11 @@ public class WikiTextParser {
 //        text = text.replaceAll("\\{\\{sub|(\\w*?)\\}\\}", " $1 ");
 
         try {
-            text = stripCite(text, 0);
+            for (int i = 0; i < 100; i++) {
+                String text0 = stripCite(text, 0);
+                if(text0.length()==text.length())break;
+                text = text0;
+            }
         } catch (Exception e) {
         }
 //        text = text.replaceAll("\\{\\{.*?\\}\\}", " ");
@@ -202,6 +212,7 @@ public class WikiTextParser {
 //        text = text.replaceAll("(?s)\\{\\{.*?\\}\\}", " ");
 //        text = cleaner.clean(text);
 //        System.out.println(text);
+//        text = text.replaceAll("\\*\\[\\[", "\r\n[[");// bullet points
         text = text.replaceAll("\\[\\[\\w+:[^\\]]+\\]\\]", " ");// [[File:...]]
         // to do [[File:Lugi Gallean2.jpg|right|thumb|[[Italian-American]] anarchist [[Luigi Galleani]]. His followers, known as Galleanists, carried out a series of bombings
         // Pattern.compile( static
@@ -220,7 +231,7 @@ public class WikiTextParser {
         return text;
     }
 
-    private String replaceEnglishAbbrevations(String text) {
+    String replaceEnglishAbbrevations(String text) {
         text = text.replace(" abbr.", " abbreviation");
         text = text.replace(" Acad.", " Academy");
         text = text.replace(" A.D.", " anno Domini");
@@ -978,7 +989,7 @@ public class WikiTextParser {
         return text;
     }
 
-    private String replaceGermanAbbrevations(String text) {
+    String replaceGermanAbbrevations(String text) {
         text = text.replace("Abb.", "Abbildung");
         text = text.replace("Abf.", "Abfahrt");
         text = text.replace("Abk.", "Abkürzung");
@@ -1002,7 +1013,7 @@ public class WikiTextParser {
         text = text.replace("Bhf.", "Bahnhof");
         text = text.replace("bzgl.", "bezüglich");
         text = text.replace("bzw.", "beziehungsweise");
-        text = text.replace(" ca.", "circa");
+        text = text.replace(" ca.", " circa");
         text = text.replace("Chr.", "Christus");
 //        text = text.replace("...l.", "lich");
         text = text.replace("d.Ä.", "der Ältere");
@@ -1169,8 +1180,8 @@ public class WikiTextParser {
 
     public InfoBox getInfoBox() {
         //parseInfoBox is expensive. Doing it only once like other parse* methods
-        if (infoBox == null)
-            infoBox = parseInfoBox();
+            if (infoBox == null)
+                infoBox = parseInfoBox();
         return infoBox;
     }
 
@@ -1192,7 +1203,12 @@ public class WikiTextParser {
             }
             if (bracketCount == 0) break;
         }
-        String infoBoxText = wikiText.substring(startPos, endPos + 1);
+        String infoBoxText;
+        try {
+            infoBoxText = wikiText.substring(startPos, endPos + 1);
+        } catch (Exception e) {
+            return null;
+        }
         try {
             infoBoxText = stripCite(infoBoxText, 0); // strip clumsy {{cite}} tags
         } catch (Exception e) {
@@ -1246,8 +1262,9 @@ public class WikiTextParser {
         try {
             String substring = text.substring(endPos + 1);
             String text0 = text.substring(0, startPos - 1) + substring;
-            if (text0.length() < length && depth < 100)
-                return stripCite(text0, depth + 1);
+            return text0;
+//            if (text0.length() < length && depth < 100)
+//                return stripCite(text0, depth + 1);
         } catch (Exception e) {
         }
         return text;

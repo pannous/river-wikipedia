@@ -49,7 +49,7 @@ import java.util.logging.Logger;
  */
 public class WikipediaRiver extends AbstractRiverComponent implements River {
     protected final org.elasticsearch.common.logging.ESLogger logger = ESLoggerFactory.getLogger("WikipediaRiver");  //Logger.getLogger("WikipediaRiver");
-    private StringBuilder sb = new StringBuilder();
+    private static StringBuilder sb = new StringBuilder();
 
     private final Client client;
 
@@ -75,9 +75,10 @@ public class WikipediaRiver extends AbstractRiverComponent implements River {
     public WikipediaRiver(RiverName riverName, RiverSettings settings, Client client) throws MalformedURLException {
         super(riverName, settings);
         this.client = client;
-        String url = "http://download.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.xml.bz2";
+//        String url = "http://download.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.xml.bz2";
 //        String url = "http://download.wikimedia.org/dewiki/latest/dewiki-latest-pages-articles.xml.bz2";
 //        String url = "file:///Users/me/dev/ai/nlp/qa/elasticsearch-river-wikiphrases/enwiki-latest-pages-articles.xml.bz2";
+        String url = "file:///Users/me/dev/ai/nlp/qa/elasticsearch-river-wikiphrases/wiki-plaintext-de/AA/wiki_00.bz2";
         if (settings.settings().containsKey("wikipedia")) {
             Map<String, Object> wikipediaSettings = (Map<String, Object>) settings.settings().get("wikipedia");
             url = XContentMapValues.nodeStringValue(wikipediaSettings.get("url"), url);
@@ -121,7 +122,11 @@ public class WikipediaRiver extends AbstractRiverComponent implements River {
         }
         WikiXMLParser parser = WikiXMLParserFactory.getSAXParser(url);
         try {
-            parser.setPageCallback(new PageCallback(this));
+            if (url.toString().endsWith(".bz2")&&!url.toString().contains("wiki_"))// wiki_ HACK!!
+                parser.setPageCallback(new PageCallback(this));
+            else {
+                parser.setPageCallback(new PlainPageCallback(this));
+            }
         } catch (Exception e) {
             logger.error("failed to create parser", e);
             return;
@@ -190,6 +195,7 @@ public class WikipediaRiver extends AbstractRiverComponent implements River {
                 parser.parse();
             } catch (Exception e) {
                 if (closed) {
+                    logger.error("WikiXMLParser closed", e);
                     return;
                 }
                 logger.error("failed to parse stream", e);
@@ -198,7 +204,7 @@ public class WikipediaRiver extends AbstractRiverComponent implements River {
     }
 
 
-    String stripTitle(String title) {
+    public static String stripTitle(String title) {
         sb.setLength(0);
         sb.append(title);
         while (sb.length() > 0 && (sb.charAt(sb.length() - 1) == '\n' || (sb.charAt(sb.length() - 1) == ' '))) {

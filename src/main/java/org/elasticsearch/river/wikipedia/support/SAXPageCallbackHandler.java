@@ -36,6 +36,10 @@ public class SAXPageCallbackHandler extends DefaultHandler {
     private String currentWikitext;
     private String currentTitle;
     private String currentID;
+    private String currentSegment;
+    private String currentSubSegment;
+    private String currentSubSubSegment;
+    private String image;
 
     public SAXPageCallbackHandler(PageCallbackHandler ph) {
         pageHandler = ph;
@@ -49,6 +53,27 @@ public class SAXPageCallbackHandler extends DefaultHandler {
             currentTitle = attr.getValue("title");
             currentID = attr.getValue("pageid");
         }
+        if (qName.equals("doc")) {
+            currentPage = new WikiPage();
+            currentWikitext = "";
+            currentTitle = attr.getValue("title");
+            currentSegment = "";
+            currentSubSegment = "";
+            currentSubSubSegment="";
+            currentID = attr.getValue("id");
+            image = "";
+//            currentURL = attr.getValue("url");
+        }
+        // START of segment = SAVE OLD!!
+        if (qName.equals("h1") || qName.equals("h2") || qName.equals("h3")) {
+//            if(currentSegment==null) currentSegment = "description";
+            if (currentWikitext != null && currentWikitext.length() > 5)
+                currentPage.addSegment(new Segment(currentPage, currentSegment, currentSubSegment,currentSubSubSegment, currentWikitext, image));
+            currentWikitext = "";// getText() ONLY THROUGH subSegments !!!!
+            if(qName.equals("h1") || qName.equals("h2")) currentSegment = "";
+            if(qName.equals("h3")) currentSubSegment= "";
+            if(qName.equals("h4")||qName.equals("h5")) currentSubSubSegment= "";
+        }
         if (currentTitle == null) currentTitle = "";
         if (currentID == null) currentID = "";
     }
@@ -57,7 +82,14 @@ public class SAXPageCallbackHandler extends DefaultHandler {
         if (qName.equals("page")) {
             currentPage.setTitle(currentTitle);
             currentPage.setID(currentID);
-            currentPage.setWikiText(currentWikitext);
+            currentPage.setWikiText(currentWikitext, false);
+            pageHandler.process(currentPage);
+        }
+        if (qName.equals("doc")) {
+            currentPage.setTitle(currentTitle);
+            currentPage.setID(currentID);
+            currentPage.setWikiText(currentWikitext, true);// PLAIN TEXT!
+//            currentPage.setRedirect(); ... !!!
             pageHandler.process(currentPage);
         }
         if (qName.equals("mediawiki")) {
@@ -66,6 +98,11 @@ public class SAXPageCallbackHandler extends DefaultHandler {
     }
 
     public void characters(char ch[], int start, int length) {
+        if(currentTag.equals("image")) {
+            image = new String(ch, start, length);
+            currentPage.getImages().add(image);
+            currentTag = "doc";
+        }
         if (currentTag.equals("title")) {
             currentTitle = currentTitle.concat(new String(ch, start, length));
         }
@@ -74,6 +111,27 @@ public class SAXPageCallbackHandler extends DefaultHandler {
         // so this may be unsafe.
         else if ((currentTag.equals("id")) && (currentID.length() == 0)) {
             currentID = new String(ch, start, length);
+        } else if (currentTag.equals("doc")) {
+            currentWikitext = currentWikitext.concat(new String(ch, start, length));
+        } else if (currentTag.equals("h1")) {
+            currentSegment = new String(ch, start, length).trim();
+        } else if (currentTag.equals("h2")) {
+//            if (currentSegment == null || currentSegment.length() == 0)
+            currentSegment = new String(ch, start, length).trim();
+//            else
+//                currentSubSegment = new String(ch, start, length);
+            currentTag = "doc"; // hack to continue wikiText
+        } else if (currentTag.equals("h3")) {
+//            currentSegment = currentSubSegment;
+//            currentSubSegment += new String(ch, start, length);
+//            currentSegment = new String(ch, start, length).trim();
+            currentSubSegment= new String(ch, start, length).trim();
+            currentTag = "doc";
+        } else if (currentTag.equals("h4")||currentTag.equals("h5")) {
+//            currentSegment = currentSubSegment;
+//            currentSubSegment += new String(ch, start, length).trim();
+            currentSubSubSegment = new String(ch, start, length).trim();
+            currentTag = "doc";
         } else if (currentTag.equals("text")) {
             currentWikitext = currentWikitext.concat(new String(ch, start, length));
         } else if (currentTag.equals("rev")) {

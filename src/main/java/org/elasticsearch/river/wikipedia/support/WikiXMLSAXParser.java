@@ -19,10 +19,11 @@
 
 package org.elasticsearch.river.wikipedia.support;
 
-import org.xml.sax.SAXException;
-import org.xml.sax.XMLReader;
+import org.elasticsearch.river.wikipedia.PlainPageCallback;
+import org.xml.sax.*;
 import org.xml.sax.helpers.XMLReaderFactory;
 
+import java.io.IOException;
 import java.net.URL;
 
 /**
@@ -34,10 +35,13 @@ public class WikiXMLSAXParser extends WikiXMLParser {
 
     private XMLReader xmlReader;
     private PageCallbackHandler pageHandler = null;
+//    private boolean plainWikiXml=false;
 
     public WikiXMLSAXParser(URL fileName) {
         super(fileName);
         try {
+//            if(!fileName.toString().endsWith(".bz2"))
+//                setPlainWikiXml(true);
             xmlReader = XMLReaderFactory.createXMLReader();
             pageHandler = new IteratorHandler(this);
         } catch (SAXException e) {
@@ -56,6 +60,7 @@ public class WikiXMLSAXParser extends WikiXMLParser {
      */
     public void setPageCallback(PageCallbackHandler handler) throws Exception {
         pageHandler = handler;
+//        if (handler instanceof PlainPageCallback) plainWikiXml = true;
     }
 
     /**
@@ -64,6 +69,9 @@ public class WikiXMLSAXParser extends WikiXMLParser {
      * @throws Exception
      */
     public void parse() throws Exception {
+//        if (isPlainWikiXml())
+//            xmlReader.setContentHandler(new SAXPlainPageCallbackHandler(pageHandler));
+//        else
         xmlReader.setContentHandler(new SAXPageCallbackHandler(pageHandler));
         xmlReader.parse(getInputSource());
     }
@@ -94,4 +102,7 @@ public class WikiXMLSAXParser extends WikiXMLParser {
         wxsp.parse();
     }
 
+//    public boolean isPlainWikiXml() {
+//        return plainWikiXml;
+//    }
 }

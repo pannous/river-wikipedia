@@ -7,6 +7,10 @@ import org.elasticsearch.river.wikipedia.support.InfoBox;
 import org.elasticsearch.river.wikipedia.support.PageCallbackHandler;
 import org.elasticsearch.river.wikipedia.support.WikiPage;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -20,20 +24,48 @@ import java.util.regex.Pattern;
 public class PageCallback implements PageCallbackHandler {
 
     private WikipediaRiver wikipediaRiver;
+    private static BufferedWriter bufferWritter;
+    private boolean saveWholePage=false;
 
     public PageCallback(WikipediaRiver wikipediaRiver) {
         this.wikipediaRiver = wikipediaRiver;
+        try {
+            if (bufferWritter == null)
+                prepareLog();
+        } catch (IOException e) {
+        }
+    }
+
+    private void prepareLog() throws IOException {
+
+        File file = new File("current-WikipediaRiver-article.txt");
+        //if file doesnt exists, then create it
+        if (!file.exists()) {
+            file.createNewFile();
+        }
+
+        //true = append file
+        FileWriter fileWritter = new FileWriter(file.getName(), true);
+        bufferWritter = new BufferedWriter(fileWritter);
     }
 
     @Override
     public void process(WikiPage page) {
         if (wikipediaRiver.closed) {
+            wikipediaRiver.logger.warn("river was closing while processing wikipedia page [{}]/[{}].",page.getID(), page.getTitle());
             return;
         }
         try {
             String title = wikipediaRiver.stripTitle(page.getTitle());
             if (wikipediaRiver.logger.isTraceEnabled()) {
                 wikipediaRiver.logger.trace("page {} : {}", page.getID(), page.getTitle());
+            }
+            try {
+                if (bufferWritter != null) {// log current title if it fails!
+                    bufferWritter.write(title + "\n");
+                    bufferWritter.flush();
+                }
+            } catch (IOException e) {
             }
             XContentBuilder pageDoc = XContentFactory.jsonBuilder().startObject();
             pageDoc.field("title", title);
@@ -47,7 +79,12 @@ public class PageCallback implements PageCallbackHandler {
                     pageDoc.value(image1);
             pageDoc.endArray();
 
-            InfoBox infoBox = page.getInfoBox();
+            InfoBox infoBox = null;
+            try {
+                infoBox = page.getInfoBox();
+            } catch (Exception e) {
+                wikipediaRiver.logger.warn("Error parsing infoBox " + e.getMessage());
+            }
             pageDoc.field("text", page.getText());
             pageDoc.field("redirect", page.isRedirect());
 //                builder.field("is_category", page.isCategory());
@@ -68,15 +105,16 @@ public class PageCallback implements PageCallbackHandler {
             pageDoc.endArray();
             pageDoc.endObject();
             if (wikipediaRiver.closed) {
-                wikipediaRiver.logger.warn("river was closing while processing wikipedia page [{}]/[{}]. Operation skipped.",
-                        page.getID(), page.getTitle());
+                wikipediaRiver.logger.warn("river was closing while processing wikipedia page [{}]/[{}].",page.getID(), page.getTitle());
                 return;
             }
+            if(saveWholePage)
             wikipediaRiver.bulkProcessor.add(new IndexRequest(wikipediaRiver.indexName, wikipediaRiver.typeName, page.getID()).source(pageDoc));
 
             // NOW PHRASES:
 //            String[] phrases = page.getText().split("\\.\\s+");
-            String[] phrases = page.getText().split("(?i)(?<=[.?!])\\\\S+(?=[a-z])");
+//            String[] phrases = page.getText().split("(?i)(?<=[.?!])\\\\S+(?=[a-z])");
+            String[] phrases = page.getText().split("(?<=[a-z])\\.\\s+");
             //String[] phrases = page.getText().split("[a-z]\\. ");
             //String[] phrases = page.getText().split("\\.\\r\\n");
             String last = "";
@@ -129,10 +167,11 @@ public class PageCallback implements PageCallbackHandler {
                     phraseDoc.endObject();
                     wikipediaRiver.bulkProcessor.add(new IndexRequest(wikipediaRiver.indexName, "phrase", page.getID() + "_" + nr++).source(phraseDoc));
                 }
+//                wikipediaRiver.bulkProcessor.flush();
             }
         } catch (Exception e) {
             e.printStackTrace();
-            wikipediaRiver.logger.warn("failed to construct index request", e);
+            wikipediaRiver.logger.warn("failed to push index request", e);
         }
     }
 

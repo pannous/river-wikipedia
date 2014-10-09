@@ -36,6 +36,7 @@ public abstract class WikiXMLParser {
 
     private URL wikiXMLFile = null;
     protected WikiPage currentPage = null;
+//    boolean plainWikiXml=false;
 
     public WikiXMLParser(URL fileName) {
         wikiXMLFile = fileName;
@@ -57,6 +58,10 @@ public abstract class WikiXMLParser {
      * @throws Exception
      */
     public abstract void parse() throws Exception;
+
+//    public void setPlainWikiXml(boolean plainWikiXml) {
+//        this.plainWikiXml = true;
+//    }
 
     /**
      * @return an iterator to the list of pages
@@ -89,4 +94,5 @@ public abstract class WikiXMLParser {
         currentPage = page;
 
     }
+
 }

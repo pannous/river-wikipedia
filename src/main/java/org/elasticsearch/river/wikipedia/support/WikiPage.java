@@ -19,6 +19,10 @@
 
 package org.elasticsearch.river.wikipedia.support;
 
+import org.elasticsearch.river.wikipedia.WikipediaRiver;
+import sun.net.www.content.text.plain;
+
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -28,7 +32,7 @@ import java.util.List;
  */
 public class WikiPage {
 
-    private String title = null;
+    String title = null;
     private WikiTextParser wikiTextParser = null;
     private String id = null;
 
@@ -46,8 +50,12 @@ public class WikiPage {
      * This setter also introduces side effects. This is not intended for direct use.
      *
      * @param wtext wiki-formatted text
+     * @param plain
      */
-    public void setWikiText(String wtext) {
+    public void setWikiText(String wtext, boolean plain) {
+        if(plain)
+        wikiTextParser = new WikiPlainTextParser(wtext);
+        else
         wikiTextParser = new WikiTextParser(wtext);
     }
 
@@ -55,7 +63,8 @@ public class WikiPage {
      * @return a string containing the page title.
      */
     public String getTitle() {
-        return title;
+        return WikipediaRiver.stripTitle(title);
+//        return title;
     }
 
     /**
@@ -149,14 +158,32 @@ public class WikiPage {
     }
 
     public boolean isArticle() {
+//        if(wikiTextParser instanceof WikiPlainTextParser)return true;// HACK!!!
         return !isSpecialPage() && !isRedirect() && !isDisambiguationPage();
     }
 
     public String getImage() {
+        if(images.size()>0) return images.get(0);
         return wikiTextParser.getImage();
     }
 
+
+    private List<String> images=new ArrayList<>();
+//    @Override
     public List<String> getImages() {
-        return wikiTextParser.getImages();
+        if(wikiTextParser!=null)
+            images.addAll(wikiTextParser.getImages());
+        return images;
+    }
+
+
+
+    List<Segment> segments = new ArrayList<>();
+    public void addSegment(Segment segment) {
+        segments.add(segment);
+    }
+
+    public List<Segment> getSegments() {
+        return segments;
     }
 }
