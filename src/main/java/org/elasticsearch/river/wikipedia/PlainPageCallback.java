@@ -81,6 +81,7 @@ public class PlainPageCallback implements PageCallbackHandler {
 //        String text = page.getText();
         String id = page.getID();
         String image = page.getImage();
+        int nr = 0;
         for (Segment segment : page.getSegments()) {
 
             if (forbidden(segment.topic)) continue;
@@ -88,19 +89,21 @@ public class PlainPageCallback implements PageCallbackHandler {
             if (forbidden(segment.subSubTopic)) continue;
 
             XContentBuilder segmentDoc = XContentFactory.jsonBuilder().startObject();
-            segmentDoc.field("topic", title);
-            segmentDoc.field("subtopic", segment.topic);
+//            segmentDoc.field("topic", title);
+            segmentDoc.field("title", title);
+            segmentDoc.field("topic", segment.topic);
+//            segmentDoc.field("subtopic", segment.topic);
             segmentDoc.field("segment", segment.subTopic);
             segmentDoc.field("subsegment", segment.subSubTopic);
-            if(segment.image!=null)
-            segmentDoc.field("image", segment.image);
+            if (segment.image != null && segment.image.length() > 0)
+                segmentDoc.field("image", segment.image);
             else
-            segmentDoc.field("image", image);
+                segmentDoc.field("image", image);
             segmentDoc.field("text", segment.text);
-            segmentDoc.field("wiki_id", id);
+            segmentDoc.field("wiki_nr", id);
             segmentDoc.endObject();
             if (wikipediaRiver != null) {
-                IndexRequest topic = new IndexRequest(wikipediaRiver.indexName, "topic", page.getID() + "_0").source(segmentDoc);
+                IndexRequest topic = new IndexRequest(wikipediaRiver.indexName, "topic", page.getID() + "_" + nr++).source(segmentDoc);
                 wikipediaRiver.bulkProcessor.add(topic);
             } else debug(segmentDoc);
         }

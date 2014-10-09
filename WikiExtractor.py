@@ -384,15 +384,30 @@ def drop_images(match):
 	# print image
 	if image not in good_images:
 		good_images.insert(0,image)
-	return "<image>"+image+"</image>" 
+	return "<image>"+image+"</image>[[" 
 	# return "IIII"+image+"IIII"
+
+			# global collectImages
+# Matcher matcher = imagePattern.matcher(wikiText);
+def drop_images2(match):
+	global good_images
+	imag = match.group(1)
+	typ = match.group(2)
+	for  badImage in bad_images:
+	   if badImage in imag:
+	   	return ""
+	image = imag + typ
+	# print image
+	if image not in good_images:
+		good_images.insert(0,image)
+	return "<image>"+image+"</image>"	
 	
 def clean(text):
 	global good_images
 	good_images=list()
 	text = imagePattern.sub(drop_images, text)
-	text = imagePattern2.sub(drop_images, text)
-	text = imagePattern3.sub(drop_images, text)
+	text = imagePattern2.sub(drop_images2, text)
+	text = imagePattern3.sub(drop_images2, text)
 	# FIXME: templates should be expanded
 	# Drop transclusions (template, parser functions)
 	# See: http://www.mediawiki.org/wiki/Help:Templates
@@ -478,8 +493,8 @@ def clean(text):
 	text = text.replace('</ref>', ' ') # BUG
 	text = text.replace('<</', ' ') # BUG <</li> 
 	text = text.replace("<math>","")
-	text = re.sub(r'<','&lt;',text)
-	text = re.sub(r'>','&gt;',text)
+	text = re.sub(r'<','&lt;',text) # BETTER SAFE THAN SORRY!
+	text = re.sub(r'>','&gt;',text) # STILL CLEANER THAN NO unescape
 	text = text.replace("&lt;image&gt;","<image>")
 	text = text.replace("&lt;/image&gt;","</image>") # WHYYY?? LOL
 	# sed -i "s/<\([0-9]\)/\&lt;\1/g"
@@ -753,7 +768,8 @@ def main():
 
 imagePattern3 = re.compile(r'image1=([a-z A-Z0-9_\\-\\s]*?)(.jpg|.bmp|.png|.gif|.tif)')
 imagePattern2 = re.compile(r'File:([a-z A-Z0-9_\\-\\s]*?)(.jpg|.bmp|.png|.gif|.tif)')
-imagePattern = re.compile(r'\[\[File:([a-z A-Z0-9_\\-\\s]*?)(.jpg|.bmp|.png|.gif|.tif)(?:\|([^[]*?))?\]\](\w*)') #(\w*)
+# imagePattern = re.compile(r'\[\[File:([a-z A-Z0-9_\\-\\s]*?)(.jpg|.bmp|.png|.gif|.tif)(?:\|([^[]*?))?\]\]')
+imagePattern = re.compile(r'\[\[File:([a-z A-Z0-9_\\-\\s]*?)(.jpg|.bmp|.png|.gif|.tif)') #[^[]*?\]\]')
 wikiLink = re.compile(r'\[\[([^[]*?)(?:\|([^[]*?))?\]\](\w*)')
 
 if __name__ == '__main__':

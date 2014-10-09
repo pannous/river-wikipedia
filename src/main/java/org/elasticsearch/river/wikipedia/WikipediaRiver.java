@@ -74,6 +74,7 @@ public class WikipediaRiver extends AbstractRiverComponent implements River {
     @Inject
     public WikipediaRiver(RiverName riverName, RiverSettings settings, Client client) throws MalformedURLException {
         super(riverName, settings);
+        logger.setLevel("debug");
         this.client = client;
 //        String url = "http://download.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.xml.bz2";
 //        String url = "http://download.wikimedia.org/dewiki/latest/dewiki-latest-pages-articles.xml.bz2";

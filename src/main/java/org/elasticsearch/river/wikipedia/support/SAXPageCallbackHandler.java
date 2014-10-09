@@ -71,8 +71,8 @@ public class SAXPageCallbackHandler extends DefaultHandler {
                 currentPage.addSegment(new Segment(currentPage, currentSegment, currentSubSegment,currentSubSubSegment, currentWikitext, image));
             currentWikitext = "";// getText() ONLY THROUGH subSegments !!!!
             if(qName.equals("h1") || qName.equals("h2")) currentSegment = "";
-            if(qName.equals("h3")) currentSubSegment= "";
-            if(qName.equals("h4")||qName.equals("h5")) currentSubSubSegment= "";
+            if(qName.equals("h1") || qName.equals("h2")||qName.equals("h3"))currentSubSegment= "";
+            currentSubSubSegment= "";
         }
         if (currentTitle == null) currentTitle = "";
         if (currentID == null) currentID = "";
